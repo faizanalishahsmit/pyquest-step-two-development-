@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PyQuest: Solo Code Leveling (AAA+ Edition)</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ========================================================================
+       A. TOP HOLOGRAPHIC SYSTEM HUD (#top-hud)
+       ======================================================================== -->
+  <header id="top-hud">
+    <!-- Left: Hunter Class Icon, Rank Badge, Level/Chapter, XP Counter, Streak Flame -->
+    <div class="hud-section hud-left">
+      <div class="hud-badge class-badge" id="hud-class-badge" title="Active Hunter Coding Class">
+        <span id="hud-class-icon">🐍</span>
+        <span id="hud-class-name">PYTHON NECROMANCER</span>
+      </div>
+
+      <div class="hud-badge rank-badge" id="hud-rank-badge" title="Current Hunter System Rank">
+        <span id="rank-badge-text">🛡️ E-Rank Rookie</span>
+      </div>
+
+      <div class="hud-badge level-badge" id="hud-level-indicator" title="Current Dungeon Gate Level">
+        <span id="level-indicator-text">GATE 01 / 10</span>
+      </div>
+
+      <div class="hud-badge xp-badge" id="hud-xp-counter" title="Total System XP Available">
+        <span>💎 XP:</span>
+        <span id="xp-value">50</span>
+      </div>
+
+      <div class="hud-badge streak-badge" id="hud-streak-badge" title="Combo Streak (3+ triggers Awakened Monarch Aura)">
+        <span id="streak-count">🔥 0</span>
+      </div>
+    </div>
+
+    <!-- Center: 15s Boss Countdown Timer Bar & Dungeon Gate Map Button -->
+    <div class="hud-section hud-center">
+      <div id="boss-timer-container" title="Combat Strike Countdown Timer">
+        <span class="timer-icon">⏳</span>
+        <div class="timer-bar-track">
+          <div id="boss-timer-bar" style="width: 100%;"></div>
+        </div>
+        <span id="boss-timer-text">15.0s</span>
+      </div>
+
+      <button type="button" class="hud-btn" id="gate-map-btn" title="Open Hunter Class & Dungeon Gate Map">
+        <span>🗺️ Gates</span>
+      </button>
+    </div>
+
+    <!-- Right: In-Battle Hunter Shop Bar, 1-Click Bilingual Toggle, Audio Synth Toggle -->
+    <div class="hud-section hud-right">
+      <div id="hunter-shop-bar" aria-label="In-Battle Hunter Shop">
+        <button type="button" class="hud-btn shop-btn" id="shop-potion-btn" title="Restore +30% Hero HP (Cost: 15 XP)">
+          <span>🧪 Potion <strong class="shop-cost">(15 XP)</strong></span>
+        </button>
+        <button type="button" class="hud-btn shop-btn" id="shop-5050-btn" title="Shadow 50/50: Eliminate 2 wrong MCQ options (Cost: 10 XP)">
+          <span>👁️ Shadow 50/50 <strong class="shop-cost">(10 XP)</strong></span>
+        </button>
+        <button type="button" class="hud-btn shop-btn" id="shop-skip-btn" title="Shadow Step Dodge: Safely skip current question (Cost: 2 XP)">
+          <span>⏭️ Dodge/Skip <strong class="shop-cost">(2 XP)</strong></span>
+        </button>
+      </div>
+
+      <button type="button" class="hud-btn" id="lang-toggle" data-lang="en" title="1-Click Instant Bilingual Switch (Roman Urdu / English)">
+        <span id="lang-toggle-label">🇬🇧 English</span>
+      </button>
+
+      <button type="button" class="hud-btn" id="audio-toggle" data-muted="false" title="Toggle Web Audio Synth SFX & BGM">
+        <span id="audio-toggle-label">🔊 SFX/BGM ON</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+       B. 2.5D PERSPECTIVE BATTLE STAGE (#battle-stage)
+       ======================================================================== -->
+  <main id="battle-stage">
+    <!-- 3D Perspective Glowing Cyber-Grid Floor & Atmospheric Fog -->
+    <div class="cyber-grid-floor"></div>
+    <div class="diagonal-combat-vector"></div>
+    <div class="stage-fog-layer"></div>
+
+    <!-- Full-Stage 60FPS Particle & Katana Slash Overlay Canvas -->
+    <canvas id="vfx-canvas"></canvas>
+
+    <!-- Stage Top-Left Dungeon Gate Status Readout -->
+    <div id="stage-combat-banner">
+      <div class="dungeon-gate-tag" id="stage-gate-title">DUNGEON GATE 01 // E-RANK SYNTAX SECTOR</div>
+    </div>
+
+    <!-- SHADOW ARMY COMPANION SLOT (Floating just behind Hero, unlocked via "ARISE!") -->
+    <div id="shadow-companion-slot" aria-label="Extracted Shadow Boss Companion">
+      <svg id="shadow-pet-svg" viewBox="0 0 160 180" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="shadowPetAura" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#c77dff" stop-opacity="0.75" />
+            <stop offset="60%" stop-color="#7b2cbf" stop-opacity="0.35" />
+            <stop offset="100%" stop-color="#10002b" stop-opacity="0" />
+          </radialGradient>
+          <linearGradient id="shadowArmorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#240046" />
+            <stop offset="50%" stop-color="#10002b" />
+            <stop offset="100%" stop-color="#3c096c" />
+          </linearGradient>
+        </defs>
+        <!-- Spectral Abyssal Aura -->
+        <circle cx="80" cy="95" r="68" fill="url(#shadowPetAura)" />
+        <!-- Floating Shadow Wisps -->
+        <path d="M40 155 Q25 120 45 90 Q35 125 58 150 Z" fill="#9d4edd" opacity="0.55" />
+        <path d="M120 155 Q138 118 114 86 Q125 120 102 152 Z" fill="#c77dff" opacity="0.55" />
+        <!-- Spectral Horned Knight Torso & Cloak -->
+        <path d="M46 150 L58 78 L80 66 L102 78 L114 150 Q80 165 46 150 Z" fill="url(#shadowArmorGrad)" stroke="#c77dff" stroke-width="2" />
+        <!-- Crown Horns -->
+        <path d="M62 68 L42 28 L70 54 Z" fill="#10002b" stroke="#9d4edd" stroke-width="2" />
+        <path d="M98 68 L118 28 L90 54 Z" fill="#10002b" stroke="#9d4edd" stroke-width="2" />
+        <path d="M75 56 L80 18 L85 56 Z" fill="#c77dff" />
+        <!-- Shadow Helm & Glowing Purple Eyes -->
+        <polygon points="62,62 80,46 98,62 92,86 80,92 68,86" fill="#0a0118" stroke="#c77dff" stroke-width="1.8" />
+        <polygon points="68,68 77,71 70,75" fill="#00f3ff" />
+        <polygon points="92,68 83,71 90,75" fill="#00f3ff" />
+        <!-- Spectral Abyssal Greatsword -->
+        <g transform="rotate(-18 122 95)">
+          <rect x="118" y="26" width="7" height="96" fill="#10002b" stroke="#00f3ff" stroke-width="1.8" />
+          <polygon points="118,26 121.5,10 125,26" fill="#00f3ff" />
+          <rect x="108" y="118" width="27" height="5" fill="#9d4edd" />
+        </g>
+      </svg>
+      <div id="shadow-pet-label">👻 SHADOW ALLY: +5s &amp; +15% XP</div>
+    </div>
+
+    <!-- HERO UNIT (Left-Bottom Foreground: bottom 12%, left 10%) -->
+    <section id="hero-container" aria-label="Hero Unit Jin-Code">
+      <!-- Hero HUD Plate -->
+      <div class="unit-hud-plate hero-hud-plate">
+        <div class="unit-hud-header">
+          <span class="unit-name" id="hero-name-display">JIN-CODE</span>
+          <span class="unit-subtag" id="hero-shadow-buff-badge" title="Active Shadow Monarch Buff">⚡ MONARCH CORE</span>
+        </div>
+        <div class="hp-bar-outer">
+          <div class="hp-bar-trail" id="hero-hp-trail" style="width: 100%;"></div>
+          <div class="hp-bar-fill hero-hp-fill" id="hero-hp-fill" style="width: 100%;"></div>
+        </div>
+        <div class="unit-hp-footer">
+          <span id="hero-status-label">HUNTER VITALITY</span>
+          <span id="hero-hp-text">100/100 HP</span>
+        </div>
+      </div>
+
+      <!-- Custom Detailed Multi-Layered Inline SVG (#hero-svg) -->
+      <svg id="hero-svg" viewBox="0 0 220 240" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="monarchCoatGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0f172a" />
+            <stop offset="55%" stop-color="#090d1a" />
+            <stop offset="100%" stop-color="#1e1b4b" />
+          </linearGradient>
+          <linearGradient id="katanaBladeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#ffffff" />
+            <stop offset="50%" stop-color="#00f3ff" />
+            <stop offset="100%" stop-color="#9d4edd" />
+          </linearGradient>
+          <radialGradient id="shadowCoreOrb" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#00f3ff" stop-opacity="0.9" />
+            <stop offset="55%" stop-color="#9d4edd" stop-opacity="0.6" />
+            <stop offset="100%" stop-color="#9d4edd" stop-opacity="0" />
+          </radialGradient>
+        </defs>
+
+        <!-- Rising Shadow Wisps behind Hero -->
+        <g class="hero-shadow-wisps" opacity="0.75">
+          <path d="M55 215 Q32 165 56 122 Q44 168 72 208 Z" fill="#9d4edd" />
+          <path d="M150 212 Q178 160 148 114 Q160 162 134 208 Z" fill="#00f3ff" opacity="0.65" />
+          <circle cx="52" cy="112" r="4" fill="#c77dff" />
+          <circle cx="156" cy="96" r="3.5" fill="#00f3ff" />
+        </g>
+
+        <!-- Cyber-Hunter Combat Boots & Stance Legs -->
+        <polygon points="74,175 64,225 84,225 94,180" fill="#090d1a" stroke="#00f3ff" stroke-width="1.6" />
+        <polygon points="122,175 132,225 152,225 138,180" fill="#090d1a" stroke="#9d4edd" stroke-width="1.6" />
+
+        <!-- High-Collar Shadow Monarch Trench Coat -->
+        <path d="M52 212 L68 102 L82 78 L128 78 L142 102 L162 212 L126 196 L105 214 L86 196 Z"
+              fill="url(#monarchCoatGrad)" stroke="#00f3ff" stroke-width="2.2" />
+
+        <!-- Cyber Armor Chest Plate & Glowing Monarch Core -->
+        <polygon points="82,92 128,92 120,146 90,146" fill="#111827" stroke="#9d4edd" stroke-width="1.8" />
+        <polygon points="96,105 114,105 109,130 101,130" fill="#00f3ff" opacity="0.88" />
+        <circle cx="105" cy="116" r="14" fill="url(#shadowCoreOrb)" />
+
+        <!-- High Standing Trench Coat Collar -->
+        <polygon points="72,94 64,62 88,74 84,96" fill="#0b132b" stroke="#00f3ff" stroke-width="2" />
+        <polygon points="138,94 146,62 122,74 126,96" fill="#0b132b" stroke="#9d4edd" stroke-width="2" />
+
+        <!-- Left Arm Channeling Shadow Code Magic -->
+        <path d="M72 100 L46 132 L62 146 L82 118 Z" fill="#0f172a" stroke="#9d4edd" stroke-width="1.8" />
+        <circle cx="48" cy="138" r="16" fill="url(#shadowCoreOrb)" />
+
+        <!-- Anime Cyber-Hunter Head, Sharp Hair & Glowing Cyan Eyes -->
+        <g class="hero-head-group">
+          <!-- Face Contour -->
+          <polygon points="88,52 122,52 119,78 105,87 91,78" fill="#e2e8f0" stroke="#1e293b" stroke-width="1.4" />
+          <!-- Glowing Cyan Eyes (Sung Jin-Woo Monarch Style) -->
+          <polygon points="93,65 102,67 95,70" fill="#00f3ff" />
+          <polygon points="117,65 108,67 115,70" fill="#00f3ff" />
+          <!-- Cyan Eye Energy Trail -->
+          <path d="M100 66 Q112 58 128 50" stroke="#00f3ff" stroke-width="2" fill="none" opacity="0.85" />
+          <!-- Spiky Anime Shadow Hair -->
+          <path d="M80 62 L74 42 L88 46 L86 28 L102 40 L110 24 L118 40 L134 30 L126 48 L138 46 L128 64 L120 50 L106 55 L92 50 Z"
+                fill="#090c15" stroke="#9d4edd" stroke-width="1.5" />
+        </g>
+
+        <!-- Right Arm & Radiant Neon Cyber-Katana (.katana-group rotates on .slash-swing) -->
+        <g class="katana-group">
+          <!-- Armored Right Arm -->
+          <polygon points="130,98 156,120 146,134 122,114" fill="#0f172a" stroke="#00f3ff" stroke-width="1.8" />
+          <!-- Cyber-Katana Hilt & Guard -->
+          <rect x="136" y="112" width="24" height="7" rx="2" transform="rotate(-38 148 115)" fill="#1e1b4b" stroke="#00f3ff" stroke-width="1.6" />
+          <polygon points="150,100 164,114 158,118 144,104" fill="#ffd60a" />
+          <!-- Radiant Neon Cyber-Katana Blade -->
+          <path d="M154 104 L214 28 L218 35 L160 111 Z" fill="url(#katanaBladeGrad)" stroke="#ffffff" stroke-width="1.5" />
+          <!-- Plasma Edge Glow Line -->
+          <line x1="156" y1="102" x2="215" y2="29" stroke="#00f3ff" stroke-width="3" opacity="0.85" />
+        </g>
+      </svg>
+
+      <!-- Glowing Hex Platform under Hero -->
+      <div class="hero-hex-platform"></div>
+    </section>
+
+    <!-- ENEMY / BOSS UNIT (Right-Top Elevated Background: top 14%, right 12%) -->
+    <section id="enemy-container" aria-label="Dungeon Enemy or Boss Unit">
+      <!-- Enemy HUD Plate -->
+      <div class="unit-hud-plate enemy-hud-plate">
+        <div class="unit-hud-header">
+          <span class="unit-name" id="enemy-name">GLITCH DEMON</span>
+          <span class="unit-subtag" id="enemy-rank-tag">E-RANK MINION</span>
+        </div>
+        <div class="hp-bar-outer">
+          <div class="hp-bar-trail" id="enemy-hp-trail" style="width: 100%;"></div>
+          <div class="hp-bar-fill enemy-hp-fill" id="enemy-hp-fill" style="width: 100%;"></div>
+        </div>
+        <div class="unit-hp-footer">
+          <span id="enemy-type-label">CORRUPTED ENTITY</span>
+          <span id="enemy-hp-text">100/100 HP</span>
+        </div>
+      </div>
+
+      <!-- Custom Detailed Multi-Group Inline SVG (#enemy-svg) -->
+      <svg id="enemy-svg" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="crimsonCoreGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ffffff" />
+            <stop offset="35%" stop-color="#ff1e42" />
+            <stop offset="100%" stop-color="#590d22" stop-opacity="0" />
+          </radialGradient>
+          <linearGradient id="demonPlateGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#2b0918" />
+            <stop offset="50%" stop-color="#14050c" />
+            <stop offset="100%" stop-color="#3c096c" />
+          </linearGradient>
+        </defs>
+
+        <!-- STATE 1: CYBER-DEMON MINION (#enemy-minion-group) -->
+        <g id="enemy-minion-group">
+          <!-- Floating Glitch Hex Shards -->
+          <polygon points="38,76 48,68 56,78 46,88" fill="#ff1e42" opacity="0.75" />
+          <polygon points="188,68 200,60 206,74 192,80" fill="#9d4edd" opacity="0.8" />
+          <!-- Cyber-Demon Hover Thruster Legs -->
+          <polygon points="86,162 72,212 96,204 104,166" fill="#1a0612" stroke="#ff1e42" stroke-width="1.8" />
+          <polygon points="148,162 164,212 140,204 132,166" fill="#1a0612" stroke="#ff1e42" stroke-width="1.8" />
+          <!-- Armored Glitch Torso -->
+          <polygon points="68,94 118,74 168,94 152,168 84,168" fill="url(#demonPlateGrad)" stroke="#ff1e42" stroke-width="2.2" />
+          <!-- Glowing Red Bug Core -->
+          <circle cx="118" cy="124" r="22" fill="url(#crimsonCoreGrad)" />
+          <polygon points="108,114 128,114 123,134 113,134" fill="#ff1e42" stroke="#ffffff" stroke-width="1.2" />
+          <!-- Horned Cyber Skull & Visor -->
+          <polygon points="92,58 118,44 144,58 138,88 98,88" fill="#13040b" stroke="#ff1e42" stroke-width="2" />
+          <path d="M94 56 L66 26 L104 48 Z" fill="#ff1e42" />
+          <path d="M142 56 L170 26 L132 48 Z" fill="#ff1e42" />
+          <!-- Glowing Crimson Visor Eyes -->
+          <polygon points="99,66 115,71 102,75" fill="#00f3ff" />
+          <polygon points="137,66 121,71 134,75" fill="#00f3ff" />
+          <!-- Plasma Scythe Claws -->
+          <path d="M68 100 L30 128 L52 152 L44 126 L74 114 Z" fill="#ff1e42" stroke="#ffffff" stroke-width="1.2" />
+          <path d="M168 100 L206 128 L184 152 L192 126 L162 114 Z" fill="#ff1e42" stroke="#ffffff" stroke-width="1.2" />
+        </g>
+
+        <!-- STATE 2: MASSIVE MULTI-HORNED S-RANK SYNTAX OVERLORD BOSS (#enemy-boss-group) -->
+        <g id="enemy-boss-group">
+          <!-- Corrupted Seraphim Abyssal Wings -->
+          <path d="M88 100 L10 38 L28 96 L6 126 L56 132 L26 168 L84 148 Z"
+                fill="#1f0312" stroke="#ff1e42" stroke-width="2.4" />
+          <path d="M152 100 L230 38 L212 96 L234 126 L184 132 L214 168 L156 148 Z"
+                fill="#1f0312" stroke="#ff1e42" stroke-width="2.4" />
+
+          <!-- Floating Corrupted Code Runes -->
+          <g fill="#ff1e42" font-family="monospace" font-size="11" font-weight="bold">
+            <text x="16" y="34">{ERR:0x99}</text>
+            <text x="164" y="32">[FATAL]</text>
+            <text x="12" y="192">SEGFAULT</text>
+            <text x="168" y="192">OVERFLOW</text>
+          </g>
+
+          <!-- Colossal Overlord Armor Torso -->
+          <polygon points="56,82 120,58 184,82 166,188 120,208 74,188"
+                   fill="url(#demonPlateGrad)" stroke="#ff1e42" stroke-width="2.8" />
+
+          <!-- Shoulder Spikes -->
+          <polygon points="56,82 22,58 46,104" fill="#ff1e42" stroke="#ffd60a" stroke-width="1.5" />
+          <polygon points="184,82 218,58 194,104" fill="#ff1e42" stroke="#ffd60a" stroke-width="1.5" />
+
+          <!-- Exposed Glowing Crimson Overlord Core -->
+          <circle cx="120" cy="132" r="36" fill="url(#crimsonCoreGrad)" />
+          <polygon points="120,102 144,132 120,162 96,132" fill="#ff1e42" stroke="#ffffff" stroke-width="2" />
+          <polygon points="120,112 134,132 120,152 106,132" fill="#ffd60a" />
+
+          <!-- Multi-Horned S-Rank Overlord Crown & Visor -->
+          <polygon points="88,46 120,30 152,46 144,84 120,94 96,84" fill="#0d0208" stroke="#ff1e42" stroke-width="2.4" />
+          <!-- Primary & Secondary Great Horns -->
+          <path d="M90 48 L36 6 L78 62 Z" fill="#ff1e42" stroke="#ffd60a" stroke-width="1.4" />
+          <path d="M150 48 L204 6 L162 62 Z" fill="#ff1e42" stroke="#ffd60a" stroke-width="1.4" />
+          <path d="M104 38 L84 4 L114 34 Z" fill="#9d4edd" />
+          <path d="M136 38 L156 4 L126 34 Z" fill="#9d4edd" />
+          <polygon points="115,34 120,4 125,34" fill="#ffd60a" />
+          <!-- 4 Glowing Crimson/Gold Eyes -->
+          <polygon points="98,54 114,58 102,62" fill="#ffd60a" />
+          <polygon points="142,54 126,58 138,62" fill="#ffd60a" />
+          <polygon points="100,66 116,70 104,74" fill="#ff1e42" />
+          <polygon points="140,66 124,70 136,74" fill="#ff1e42" />
+        </g>
+      </svg>
+
+      <!-- Corrupted Dark Platform under Enemy -->
+      <div class="enemy-corrupted-platform"></div>
+    </section>
+  </main>
+
+  <!-- ========================================================================
+       C. BOTTOM HOLOGRAPHIC COMBAT COMMAND DECK (#combat-deck)
+       ======================================================================== -->
+  <section id="combat-deck" aria-label="Holographic Combat Command Deck">
+    <!-- Top Split Row: Attack Mode + Question Prompt (Left) & Dark IDE Code Snippet (Right) -->
+    <div class="deck-top-grid">
+      <div class="prompt-column">
+        <div class="deck-header-strip">
+          <div id="attack-mode-badge">⚡ LIGHT ATTACK: QUICK MCQ</div>
+          <span class="combat-hint-tag" id="combat-keybind-hint">KEYS [A] [B] [C] [D] OR CLICK TO STRIKE</span>
+        </div>
+        <div id="question-text">
+          Initialize Hunter System: What will the following Python code output to the console?
+        </div>
+      </div>
+
+      <!-- Code Display Terminal (#code-snippet-box) with Dark IDE Styling & Line Numbers -->
+      <div id="code-snippet-box">
+        <div class="code-line-numbers" id="code-line-numbers">1&#10;2&#10;3</div>
+        <pre id="code-snippet-content"><code>shadow_rank = "S-Rank"
+power = 9000
+print(f"{shadow_rank}: {power}")</code></pre>
+      </div>
+    </div>
+
+    <!-- Interactive Combat Input Area (Supports 2 Switchable Views) -->
+    <div class="combat-input-area">
+      <!-- VIEW 1: 4 Persona-5-Styled Angled Neon Buttons (#options-grid) -->
+      <div id="options-grid">
+        <button type="button" class="option-btn" data-index="0">
+          <span class="keybind-badge">[A]</span>
+          <span class="option-text">S-Rank: 9000</span>
+        </button>
+        <button type="button" class="option-btn" data-index="1">
+          <span class="keybind-badge">[B]</span>
+          <span class="option-text">{shadow_rank}: {power}</span>
+        </button>
+        <button type="button" class="option-btn" data-index="2">
+          <span class="keybind-badge">[C]</span>
+          <span class="option-text">SyntaxError</span>
+        </button>
+        <button type="button" class="option-btn" data-index="3">
+          <span class="keybind-badge">[D]</span>
+          <span class="option-text">None</span>
+        </button>
+      </div>
+
+      <!-- VIEW 2: Live Code Terminal (#terminal-input-zone) for Ultimate/Boss Attacks -->
+      <div id="terminal-input-zone" class="hidden">
+        <div class="terminal-input-wrapper">
+          <span class="terminal-prompt-symbol" id="terminal-hint-text">monarch@pyquest:~$</span>
+          <input
+            type="text"
+            id="live-code-input"
+            placeholder="Type code here to cast Ultimate Slash..."
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+        <button type="button" id="execute-code-btn">
+          <span>⚡ EXECUTE SLASH</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- System Explanation Drawer (#feedback-drawer) -->
+    <div id="feedback-drawer" aria-live="polite">
+      <div class="feedback-content">
+        <div id="feedback-status-title">⚡ CRITICAL HIT // SYSTEM ANALYSIS</div>
+        <p id="feedback-explanation-text">
+          Python f-strings evaluate expressions inside curly braces {} at runtime.
+        </p>
+      </div>
+      <button type="button" id="next-strike-btn">
+        <span>NEXT STRIKE ➔</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       D. 4 FULL-SCREEN AAA+ OVERLAYS / MODALS
+       ======================================================================== -->
+
+  <!-- 1. 🏰 Hunter Class & Dungeon Gate Selection Screen (#class-select-modal) -->
+  <div id="class-select-modal" class="system-modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="system-window">
+      <div class="modal-header">
+        <h1 class="modal-title" id="class-modal-title">🏰 HUNTER AWAKENING &amp; DUNGEON GATES</h1>
+        <p class="modal-subtitle" id="class-modal-subtitle">
+          Select your Coding Combat Class and enter an active Dungeon Gate (Levels 1–10)
+        </p>
+      </div>
+
+      <!-- 3 Hunter Classes (Python, JavaScript, C++) -->
+      <div class="class-cards-grid" id="class-cards-container">
+        <button type="button" class="hunter-class-card selected" data-class="python">
+          <div class="class-card-icon">🐍</div>
+          <div class="class-card-title">Python — Shadow Necromancer</div>
+          <div class="class-card-role">AI &amp; Logic Magic // Clean Syntax</div>
+          <p class="class-card-desc">
+            Command shadow legions with expressive data structures, list comprehensions, and algorithmic spells.
+          </p>
+        </button>
+
+        <button type="button" class="hunter-class-card" data-class="javascript">
+          <div class="class-card-icon">⚡</div>
+          <div class="class-card-title">JavaScript — Cyber Assassin</div>
+          <div class="class-card-role">Web &amp; Lightning Crits // Async Speed</div>
+          <p class="class-card-desc">
+            Strike at high voltage with closures, array higher-order blades, Promises, and DOM manipulation crits.
+          </p>
+        </button>
+
+        <button type="button" class="hunter-class-card" data-class="cpp">
+          <div class="class-card-icon">⚔️</div>
+          <div class="class-card-title">C++ — Berserker Monarch</div>
+          <div class="class-card-role">Memory &amp; High-Damage Strikes // Raw Power</div>
+          <p class="class-card-desc">
+            Cleave through S-Rank armor with pointers, references, STL vectors, and zero-overhead execution.
+          </p>
+        </button>
+      </div>
+
+      <!-- Chapter / Level Selector Grid (Levels 1–10) -->
+      <div class="gate-section-label" id="gate-grid-heading">
+        🗺️ SELECT DUNGEON GATE (LEVELS 1–9 MINIONS // LEVEL 10 S-RANK RED GATE BOSS)
+      </div>
+      <div id="gate-levels-grid">
+        <!-- Populated dynamically by engine.js with fallback static buttons for instant inspection -->
+        <button type="button" class="gate-level-btn gate-active" data-level="1">
+          <span>GATE 01</span><small>E-Rank</small>
+        </button>
+        <button type="button" class="gate-level-btn" data-level="2">
+          <span>GATE 02</span><small>E-Rank</small>
+        </button>
+        <button type="button" class="gate-level-btn" data-level="3">
+          <span>GATE 03</span><small>D-Rank</small>
+        </button>
+        <button type="button" class="gate-level-btn" data-level="4">
+          <span>GATE 04</span><small>D-Rank</small>
+        </button>
+        <button type="button" class="gate-level-btn" data-level="5">
+          <span>GATE 05</span><small>C-Rank</small>
+        </button>
+        <button type="button" class="gate-level-btn" data-level="6">
+          <span>GATE 06</span><small>C-Rank</small>
+        </button>
+        <button type="button" class="gate-level-btn" data-level="7">
+          <span>GATE 07</span><small>B-Rank</small>
+        </button>
+        <button type="button" class="gate-level-btn" data-level="8">
+          <span>GATE 08</span><small>B-Rank</small>
+        </button>
+        <button type="button" class="gate-level-btn" data-level="9">
+          <span>GATE 09</span><small>A-Rank</small>
+        </button>
+        <button type="button" class="gate-level-btn gate-boss" data-level="10">
+          <span>🔥 GATE 10</span><small>S-RANK BOSS</small>
+        </button>
+      </div>
+
+      <div class="modal-actions-row">
+        <button type="button" class="primary-system-btn" id="start-gate-btn">
+          <span>⚔️ ENTER DUNGEON GATE</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 🚨 S-Rank Boss Warning Overlay (#boss-warning-overlay) -->
+  <div id="boss-warning-overlay" class="system-modal-overlay hidden" role="alertdialog" aria-modal="true">
+    <div class="hazard-stripe-bar"></div>
+    <div class="boss-warning-center">
+      <div class="boss-warning-code">🚨 RED GATE EMERGENCY ALERT // SYSTEM HAZARD LEVEL: EXTREME 🚨</div>
+      <h2 class="boss-warning-title">WARNING: S-RANK DUNGEON BOSS DETECTED</h2>
+      <p class="boss-warning-sub" id="boss-warning-name">S-RANK SYNTAX OVERLORD HAS ENTERED THE ARENA</p>
+    </div>
+    <div class="hazard-stripe-bar"></div>
+  </div>
+
+  <!-- 3. 👻 "ARISE!" Shadow Extraction Modal (#arise-modal) -->
+  <div id="arise-modal" class="system-modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="system-window arise-window">
+      <div class="modal-header">
+        <h2 class="modal-title">👻 SHADOW EXTRACTION AVAILABLE</h2>
+        <p class="modal-subtitle" id="arise-subtitle">
+          The S-Rank Dungeon Boss has fallen. Command its shadow to join your army!
+        </p>
+      </div>
+
+      <!-- Abyssal Vortex & Boss Shadow Silhouette -->
+      <div class="arise-vortex-stage">
+        <svg viewBox="0 0 140 140" width="135" height="135" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="70" cy="70" r="58" fill="none" stroke="#c77dff" stroke-width="2" stroke-dasharray="8 6" />
+          <path d="M38 115 L50 56 L70 42 L90 56 L102 115 Z" fill="#10002b" stroke="#00f3ff" stroke-width="2" />
+          <path d="M52 50 L30 16 L64 42 Z" fill="#9d4edd" />
+          <path d="M88 50 L110 16 L76 42 Z" fill="#9d4edd" />
+          <polygon points="56,58 66,61 59,65" fill="#00f3ff" />
+          <polygon points="84,58 74,61 81,65" fill="#00f3ff" />
+        </svg>
+      </div>
+
+      <div class="arise-buff-box" id="arise-buff-desc">
+        PASSIVE BUFF: +5s Boss Timer &amp; +15% Critical XP Multiplier
+      </div>
+
+      <div class="modal-actions-row">
+        <button type="button" id="arise-extract-btn">
+          <span>[ 👻 ARISE! (EXTRACT SHADOW) ]</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 🏆 System Victory / Defeat Modal (#result-modal) -->
+  <div id="result-modal" class="system-modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="system-window result-window">
+      <div class="modal-header">
+        <h2 class="modal-title" id="result-title">🏆 DUNGEON GATE CLEARED!</h2>
+        <p class="modal-subtitle" id="result-subtitle">
+          System Evaluation Complete — Hunter Rank Progress Updated
+        </p>
+      </div>
+
+      <div class="result-stats-grid">
+        <div class="result-stat-card">
+          <div class="stat-label">XP EARNED</div>
+          <div class="stat-value" id="result-xp-earned">+120 XP</div>
+        </div>
+        <div class="result-stat-card">
+          <div class="stat-label">MAX STREAK</div>
+          <div class="stat-value" id="result-streak-max">🔥 4</div>
+        </div>
+        <div class="result-stat-card">
+          <div class="stat-label">HUNTER RANK</div>
+          <div class="stat-value" id="result-rank-status">D-RANK</div>
+        </div>
+        <div class="result-stat-card">
+          <div class="stat-label">ACCURACY</div>
+          <div class="stat-value" id="result-accuracy">100%</div>
+        </div>
+      </div>
+
+      <div class="modal-actions-row">
+        <button type="button" class="primary-system-btn" id="result-next-btn">
+          <span>NEXT LEVEL ➔</span>
+        </button>
+        <button type="button" class="hud-btn" id="result-retry-btn">
+          <span>🔄 RETRY GATE</span>
+        </button>
+        <button type="button" class="hud-btn" id="result-class-btn">
+          <span>🏰 SWITCH CLASS</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODULAR 5-FILE ARCHITECTURE SCRIPT CONNECTIONS
+       ======================================================================== -->
+  <script src="vfx_audio.js"></script>
+  <script src="data_classes.js"></script>
+  <script src="engine.js"></script>
+  <div id="root" class="hidden"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
